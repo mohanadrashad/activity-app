@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Dashboard</title>
+  <title>بادر - Admin Dashboard</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,7 +11,8 @@
   <!-- Login Modal -->
   <div id="loginModal" class="modal-overlay">
     <div class="modal">
-      <h2>Admin Login</h2>
+      <div class="brand-logo" style="color: var(--primary); font-size: 32px; margin-bottom: 4px;">بادر</div>
+      <div class="brand-logo-en" style="color: var(--text-muted); margin-bottom: 16px;">Admin Dashboard</div>
       <div id="loginError" class="message"></div>
       <form id="loginForm">
         <div class="form-group">
@@ -24,84 +25,95 @@
   </div>
 
   <!-- Dashboard (hidden until login) -->
-  <div id="dashboard" class="container" style="display:none;">
-    <h1>Admin Dashboard</h1>
+  <div id="dashboard" style="display:none;">
+    <header class="brand-header">
+      <div class="brand-logo" style="font-size: 32px;">بادر</div>
+      <div class="brand-logo-en">Admin Dashboard</div>
+    </header>
 
-    <div class="tabs">
-      <div class="tab active" data-tab="activities">Activities</div>
-      <div class="tab" data-tab="participants">Participants</div>
-    </div>
+    <div class="container">
+      <div class="tabs">
+        <div class="tab active" data-tab="activities">Activities</div>
+        <div class="tab" data-tab="participants">Participants</div>
+      </div>
 
-    <!-- Activities Tab -->
-    <div id="tab-activities" class="tab-content active">
-      <div class="card">
-        <h2>Create New Activity</h2>
-        <form id="activityForm">
-          <div class="form-row">
-            <div class="form-group">
-              <label for="actName">Activity Name</label>
-              <input type="text" id="actName" required placeholder="e.g. Morning Run">
+      <!-- Activities Tab -->
+      <div id="tab-activities" class="tab-content active">
+        <div class="card">
+          <h2>Create New Activity</h2>
+          <form id="activityForm">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="actName">Activity Name</label>
+                <input type="text" id="actName" required placeholder="e.g. Morning Run">
+              </div>
+              <div class="form-group">
+                <label for="actPoints">Points</label>
+                <input type="number" id="actPoints" required min="0" placeholder="e.g. 10">
+              </div>
+              <div class="form-group">
+                <label for="actDate">Active Date</label>
+                <input type="date" id="actDate" required>
+              </div>
             </div>
-            <div class="form-group">
-              <label for="actPoints">Points</label>
-              <input type="number" id="actPoints" required min="0" placeholder="e.g. 10">
-            </div>
-            <div class="form-group">
-              <label for="actDate">Active Date</label>
-              <input type="date" id="actDate" required>
+            <button type="submit" class="btn btn-success" id="actSubmitBtn">Create Activity</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2>All Activities</h2>
+          <div id="activitiesTableWrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Points</th>
+                  <th>Date</th>
+                  <th>Participants</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="activitiesBody"></tbody>
+            </table>
+          </div>
+          <p id="noActivities" class="no-data" style="display:none;">No activities created yet.</p>
+        </div>
+      </div>
+
+      <!-- Participants Tab -->
+      <div id="tab-participants" class="tab-content">
+        <div class="card">
+          <div class="section-header">
+            <h2>Participants Ranking</h2>
+            <div class="section-header-actions">
+              <button class="btn btn-danger" id="deleteSelectedBtn" onclick="deleteSelectedParticipants()" style="display:none;">Delete Selected</button>
+              <button class="btn btn-export" onclick="exportExcel()">Export to Excel</button>
             </div>
           </div>
-          <button type="submit" class="btn btn-success" id="actSubmitBtn">Create Activity</button>
-        </form>
-      </div>
-
-      <div class="card">
-        <h2>All Activities</h2>
-        <div id="activitiesTableWrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Points</th>
-                <th>Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="activitiesBody"></tbody>
-          </table>
-        </div>
-        <p id="noActivities" class="no-data" style="display:none;">No activities created yet.</p>
-      </div>
-    </div>
-
-    <!-- Participants Tab -->
-    <div id="tab-participants" class="tab-content">
-      <div class="card">
-        <div class="section-header">
-          <h2>Participants Ranking</h2>
-          <div class="section-header-actions">
-            <button class="btn btn-danger" id="deleteSelectedBtn" onclick="deleteSelectedParticipants()" style="display:none;">Delete Selected</button>
-            <button class="btn btn-export" onclick="exportExcel()">Export to Excel</button>
+          <div id="participantsTableWrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>
+                  <th>Rank</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Total Points</th>
+                  <th>Activities</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="participantsBody"></tbody>
+            </table>
           </div>
+          <p id="noParticipants" class="no-data" style="display:none;">No participants registered yet.</p>
         </div>
-        <div id="participantsTableWrapper">
-          <table>
-            <thead>
-              <tr>
-                <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>
-                <th>Rank</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Total Points</th>
-                <th>Activities</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="participantsBody"></tbody>
-          </table>
-        </div>
-        <p id="noParticipants" class="no-data" style="display:none;">No participants registered yet.</p>
       </div>
+
+      <footer class="page-footer">
+        <div class="footer-line"></div>
+        بادر - Bader Platform
+      </footer>
     </div>
   </div>
 

@@ -100,10 +100,20 @@ async function loadActivities() {
         <td>${escapeHtml(a.name)}</td>
         <td>${a.points}</td>
         <td>${a.active_date}</td>
+        <td>
+          <button class="btn btn-view-participants" onclick="toggleActivityParticipants(${a.id}, this)">
+            ${a.participant_count} <span class="expand-icon">&#9654;</span>
+          </button>
+        </td>
         <td class="actions">
           <button class="btn btn-add-participant" onclick="showAddParticipant(${a.id})">Add Person</button>
           <button class="btn btn-edit" onclick="editActivity(${a.id}, '${escapeHtml(a.name)}', ${a.points}, '${a.active_date}')">Edit</button>
           <button class="btn btn-danger" onclick="deleteActivity(${a.id})">Delete</button>
+        </td>
+      </tr>
+      <tr class="participants-row" id="participants-row-${a.id}" style="display:none;">
+        <td colspan="5" class="participants-cell">
+          <div class="activity-participants" id="activity-participants-${a.id}">Loading...</div>
         </td>
       </tr>
     `).join('');
@@ -130,6 +140,84 @@ async function deleteActivity(id) {
     loadParticipants();
   } catch {
     alert('Failed to delete activity.');
+  }
+}
+
+// --- View Participants per Activity ---
+async function toggleActivityParticipants(activityId, btn) {
+  const row = document.getElementById(`participants-row-${activityId}`);
+  const container = document.getElementById(`activity-participants-${activityId}`);
+  const icon = btn.querySelector('.expand-icon');
+
+  if (row.style.display !== 'none') {
+    row.style.display = 'none';
+    icon.innerHTML = '&#9654;';
+    return;
+  }
+
+  row.style.display = '';
+  icon.innerHTML = '&#9660;';
+  container.innerHTML = 'Loading...';
+
+  try {
+    const res = await fetch(`/api/admin/activities/${activityId}/participants`);
+    const participants = await res.json();
+
+    if (participants.length === 0) {
+      container.innerHTML = '<p class="no-data" style="padding:10px;">No participants yet.</p>';
+      return;
+    }
+
+    container.innerHTML = `
+      <table class="sub-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Registered At</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${participants.map((p, i) => `
+            <tr>
+              <td>${i + 1}</td>
+              <td>${escapeHtml(p.first_name + ' ' + p.last_name)}</td>
+              <td>${escapeHtml(p.email)}</td>
+              <td>${p.submitted_at}</td>
+              <td>
+                <button class="btn btn-danger" onclick="removeParticipantFromActivity(${p.id}, ${activityId})">Remove</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  } catch {
+    container.innerHTML = '<p class="no-data" style="padding:10px;">Failed to load participants.</p>';
+  }
+}
+
+async function removeParticipantFromActivity(participantId, activityId) {
+  if (!confirm('Remove this participant from this activity?')) return;
+
+  try {
+    const res = await fetch(`/api/admin/participants/single/${participantId}`, { method: 'DELETE' });
+    if (res.ok) {
+      // Re-expand to refresh the list
+      const btn = document.querySelector(`#participants-row-${activityId}`).previousElementSibling.querySelector('.btn-view-participants');
+      const row = document.getElementById(`participants-row-${activityId}`);
+      row.style.display = 'none';
+      btn.querySelector('.expand-icon').innerHTML = '&#9654;';
+      toggleActivityParticipants(activityId, btn);
+      loadActivities();
+      loadParticipants();
+    } else {
+      alert('Failed to remove participant.');
+    }
+  } catch {
+    alert('Failed to remove participant.');
   }
 }
 
@@ -176,6 +264,7 @@ document.getElementById('addPartForm').addEventListener('submit', async (e) => {
       msgDiv.textContent = 'Participant added successfully!';
       msgDiv.className = 'message success';
       document.getElementById('addPartForm').reset();
+      loadActivities();
       loadParticipants();
     } else {
       msgDiv.textContent = result.error || 'Failed to add participant.';

@@ -117,12 +117,27 @@ app.post('/api/admin/login', (req, res) => {
   }
 });
 
-// List all activities
+// List all activities with participant count
 app.get('/api/admin/activities', (req, res) => {
-  const activities = db.prepare(
-    'SELECT id, name, points, active_date FROM activities ORDER BY active_date DESC'
-  ).all();
+  const activities = db.prepare(`
+    SELECT a.id, a.name, a.points, a.active_date,
+      (SELECT COUNT(*) FROM participants p WHERE p.activity_id = a.id) AS participant_count
+    FROM activities a
+    ORDER BY a.active_date DESC
+  `).all();
   res.json(activities);
+});
+
+// Get participants for a specific activity
+app.get('/api/admin/activities/:id/participants', (req, res) => {
+  const { id } = req.params;
+  const participants = db.prepare(`
+    SELECT p.id, p.first_name, p.last_name, p.email, p.submitted_at
+    FROM participants p
+    WHERE p.activity_id = ?
+    ORDER BY p.submitted_at ASC
+  `).all(id);
+  res.json(participants);
 });
 
 // Create activity
@@ -230,6 +245,13 @@ app.put('/api/admin/participants/:email', (req, res) => {
     'UPDATE participants SET first_name = ?, last_name = ?, email = ? WHERE email = ?'
   ).run(first_name, last_name, normalizedNew, normalizedOld);
 
+  res.json({ success: true });
+});
+
+// Delete a single participant by ID
+app.delete('/api/admin/participants/single/:id', (req, res) => {
+  const { id } = req.params;
+  db.prepare('DELETE FROM participants WHERE id = ?').run(id);
   res.json({ success: true });
 });
 
