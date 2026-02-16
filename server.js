@@ -44,18 +44,19 @@ try {
   // Column already exists
 }
 
+// Migration: normalize emails to lowercase
+db.exec(`UPDATE participants SET email = LOWER(email)`);
+
+// Migration: remove duplicate (email + activity_id) entries, keeping the first
+db.exec(`
+  DELETE FROM participants WHERE id NOT IN (
+    SELECT MIN(id) FROM participants GROUP BY LOWER(email), activity_id
+  )
+`);
+
 // Migration: add unique constraint on email + activity_id
-try {
-  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_email_activity ON participants(email, activity_id)`);
-} catch (e) {
-  // Index may fail if duplicates already exist — clean up first
-  db.exec(`
-    DELETE FROM participants WHERE id NOT IN (
-      SELECT MIN(id) FROM participants GROUP BY email, activity_id
-    )
-  `);
-  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_email_activity ON participants(email, activity_id)`);
-}
+db.exec(`DROP INDEX IF EXISTS idx_email_activity`);
+db.exec(`CREATE UNIQUE INDEX idx_email_activity ON participants(email, activity_id)`);
 
 // --- Public Routes ---
 
@@ -76,6 +77,8 @@ app.post('/api/register', (req, res) => {
     return res.status(400).json({ error: 'First name, last name, email, and activity are required.' });
   }
 
+  const normalizedEmail = email.trim().toLowerCase();
+
   const activity = db.prepare('SELECT * FROM activities WHERE id = ?').get(activity_id);
   if (!activity) {
     return res.status(400).json({ error: 'Invalid activity selected.' });
@@ -89,7 +92,7 @@ app.post('/api/register', (req, res) => {
   // Check for duplicate: same email + same activity
   const existing = db.prepare(
     'SELECT id FROM participants WHERE email = ? AND activity_id = ?'
-  ).get(email, activity_id);
+  ).get(normalizedEmail, activity_id);
 
   if (existing) {
     return res.status(400).json({ error: 'You have already registered for this activity.' });
@@ -97,7 +100,7 @@ app.post('/api/register', (req, res) => {
 
   const result = db.prepare(
     'INSERT INTO participants (first_name, middle_name, last_name, email, activity_id) VALUES (?, ?, ?, ?, ?)'
-  ).run(first_name, '', last_name, email, activity_id);
+  ).run(first_name, '', last_name, normalizedEmail, activity_id);
 
   res.json({ success: true, id: result.lastInsertRowid });
 });
