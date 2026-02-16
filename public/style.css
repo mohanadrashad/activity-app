@@ -143,6 +143,17 @@ h2 {
   background: #e0a800;
 }
 
+.btn-add-participant {
+  background: #1a73e8;
+  color: #fff;
+  padding: 6px 14px;
+  font-size: 13px;
+}
+
+.btn-add-participant:hover {
+  background: #1557b0;
+}
+
 .btn-export {
   background: #34a853;
   color: #fff;

@@ -160,6 +160,37 @@ app.delete('/api/admin/activities/:id', (req, res) => {
   res.json({ success: true });
 });
 
+// Admin: add participant to a specific activity (no date restriction)
+app.post('/api/admin/activities/:id/participants', (req, res) => {
+  const { id } = req.params;
+  const { first_name, last_name, email } = req.body;
+
+  if (!first_name || !last_name || !email) {
+    return res.status(400).json({ error: 'First name, last name, and email are required.' });
+  }
+
+  const activity = db.prepare('SELECT * FROM activities WHERE id = ?').get(id);
+  if (!activity) {
+    return res.status(400).json({ error: 'Activity not found.' });
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const existing = db.prepare(
+    'SELECT id FROM participants WHERE email = ? AND activity_id = ?'
+  ).get(normalizedEmail, id);
+
+  if (existing) {
+    return res.status(400).json({ error: 'This person is already registered for this activity.' });
+  }
+
+  const result = db.prepare(
+    'INSERT INTO participants (first_name, middle_name, last_name, email, activity_id) VALUES (?, ?, ?, ?, ?)'
+  ).run(first_name, '', last_name, normalizedEmail, id);
+
+  res.json({ success: true, id: result.lastInsertRowid });
+});
+
 // Get all participants aggregated by email, ranked by total points
 app.get('/api/admin/participants', (req, res) => {
   const participants = db.prepare(`

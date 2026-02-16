@@ -101,6 +101,7 @@ async function loadActivities() {
         <td>${a.points}</td>
         <td>${a.active_date}</td>
         <td class="actions">
+          <button class="btn btn-add-participant" onclick="showAddParticipant(${a.id})">Add Person</button>
           <button class="btn btn-edit" onclick="editActivity(${a.id}, '${escapeHtml(a.name)}', ${a.points}, '${a.active_date}')">Edit</button>
           <button class="btn btn-danger" onclick="deleteActivity(${a.id})">Delete</button>
         </td>
@@ -131,6 +132,60 @@ async function deleteActivity(id) {
     alert('Failed to delete activity.');
   }
 }
+
+// --- Add Participant to Activity ---
+function showAddParticipant(activityId) {
+  const modal = document.getElementById('addParticipantModal');
+  document.getElementById('addPartActivityId').value = activityId;
+  document.getElementById('addPartForm').reset();
+  document.getElementById('addPartMessage').className = 'message';
+  modal.style.display = 'flex';
+}
+
+function closeAddParticipantModal() {
+  document.getElementById('addParticipantModal').style.display = 'none';
+}
+
+document.getElementById('addPartForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const activityId = document.getElementById('addPartActivityId').value;
+  const msgDiv = document.getElementById('addPartMessage');
+
+  const data = {
+    first_name: document.getElementById('addPartFirst').value.trim(),
+    last_name: document.getElementById('addPartLast').value.trim(),
+    email: document.getElementById('addPartEmail').value.trim(),
+  };
+
+  if (!data.first_name || !data.last_name || !data.email) {
+    msgDiv.textContent = 'All fields are required.';
+    msgDiv.className = 'message error';
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/admin/activities/${activityId}/participants`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+
+    const result = await res.json();
+
+    if (res.ok) {
+      msgDiv.textContent = 'Participant added successfully!';
+      msgDiv.className = 'message success';
+      document.getElementById('addPartForm').reset();
+      loadParticipants();
+    } else {
+      msgDiv.textContent = result.error || 'Failed to add participant.';
+      msgDiv.className = 'message error';
+    }
+  } catch {
+    msgDiv.textContent = 'Server error.';
+    msgDiv.className = 'message error';
+  }
+});
 
 // --- Participants ---
 async function loadParticipants() {
