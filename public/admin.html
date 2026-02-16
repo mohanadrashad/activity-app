@@ -79,17 +79,22 @@
       <div class="card">
         <div class="section-header">
           <h2>Participants Ranking</h2>
-          <button class="btn btn-export" onclick="exportExcel()">Export to Excel</button>
+          <div class="section-header-actions">
+            <button class="btn btn-danger" id="deleteSelectedBtn" onclick="deleteSelectedParticipants()" style="display:none;">Delete Selected</button>
+            <button class="btn btn-export" onclick="exportExcel()">Export to Excel</button>
+          </div>
         </div>
         <div id="participantsTableWrapper">
           <table>
             <thead>
               <tr>
+                <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>
                 <th>Rank</th>
                 <th>Name</th>
                 <th>Email</th>
                 <th>Total Points</th>
                 <th>Activities</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody id="participantsBody"></tbody>

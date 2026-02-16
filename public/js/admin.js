@@ -147,6 +147,8 @@ async function loadParticipants() {
     }
 
     noData.style.display = 'none';
+    document.getElementById('selectAll').checked = false;
+    document.getElementById('deleteSelectedBtn').style.display = 'none';
     tbody.innerHTML = participants.map((p, i) => {
       const rank = i + 1;
       let badgeClass = '';
@@ -158,17 +160,80 @@ async function loadParticipants() {
 
       return `
         <tr>
+          <td><input type="checkbox" class="participant-checkbox" value="${escapeHtml(p.email)}" onchange="updateDeleteBtn()"></td>
           <td><span class="rank-badge ${badgeClass}">${rank}</span></td>
           <td>${escapeHtml(fullName)}</td>
           <td>${escapeHtml(p.email)}</td>
           <td>${p.total_points}</td>
           <td>${escapeHtml(p.activities)}</td>
+          <td class="actions">
+            <button class="btn btn-edit" onclick="editParticipant('${escapeHtml(p.email)}', '${escapeHtml(p.first_name)}', '${escapeHtml(p.last_name)}')">Edit</button>
+          </td>
         </tr>
       `;
     }).join('');
   } catch {
     alert('Failed to load participants.');
   }
+}
+
+// --- Select All / Delete Selected ---
+function toggleSelectAll(checkbox) {
+  document.querySelectorAll('.participant-checkbox').forEach(cb => {
+    cb.checked = checkbox.checked;
+  });
+  updateDeleteBtn();
+}
+
+function updateDeleteBtn() {
+  const checked = document.querySelectorAll('.participant-checkbox:checked');
+  document.getElementById('deleteSelectedBtn').style.display = checked.length > 0 ? 'inline-block' : 'none';
+}
+
+async function deleteSelectedParticipants() {
+  const checked = document.querySelectorAll('.participant-checkbox:checked');
+  const emails = Array.from(checked).map(cb => cb.value);
+
+  if (emails.length === 0) return;
+  if (!confirm(`Delete ${emails.length} participant(s) and all their registrations?`)) return;
+
+  try {
+    const res = await fetch('/api/admin/participants/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emails }),
+    });
+
+    if (res.ok) {
+      loadParticipants();
+    } else {
+      alert('Failed to delete participants.');
+    }
+  } catch {
+    alert('Failed to delete participants.');
+  }
+}
+
+// --- Edit Participant ---
+function editParticipant(email, firstName, lastName) {
+  const newFirst = prompt('First Name:', firstName);
+  if (newFirst === null) return;
+  const newLast = prompt('Last Name:', lastName);
+  if (newLast === null) return;
+  const newEmail = prompt('Email:', email);
+  if (newEmail === null) return;
+
+  fetch(`/api/admin/participants/${encodeURIComponent(email)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ first_name: newFirst, last_name: newLast, new_email: newEmail }),
+  }).then(res => {
+    if (res.ok) {
+      loadParticipants();
+    } else {
+      alert('Failed to update participant.');
+    }
+  }).catch(() => alert('Failed to update participant.'));
 }
 
 // --- Export ---

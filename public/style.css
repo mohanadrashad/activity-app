@@ -255,6 +255,12 @@ tbody tr:hover {
   border: none;
 }
 
+.section-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 /* Tabs */
 .tabs {
   display: flex;

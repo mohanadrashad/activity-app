@@ -183,6 +183,39 @@ app.get('/api/admin/participants', (req, res) => {
   res.json(participants);
 });
 
+// Update participant (by email)
+app.put('/api/admin/participants/:email', (req, res) => {
+  const { email } = req.params;
+  const { first_name, last_name, new_email } = req.body;
+
+  if (!first_name || !last_name || !new_email) {
+    return res.status(400).json({ error: 'First name, last name, and email are required.' });
+  }
+
+  const normalizedOld = decodeURIComponent(email).toLowerCase();
+  const normalizedNew = new_email.trim().toLowerCase();
+
+  db.prepare(
+    'UPDATE participants SET first_name = ?, last_name = ?, email = ? WHERE email = ?'
+  ).run(first_name, last_name, normalizedNew, normalizedOld);
+
+  res.json({ success: true });
+});
+
+// Delete participants (bulk by emails)
+app.post('/api/admin/participants/delete', (req, res) => {
+  const { emails } = req.body;
+
+  if (!emails || !Array.isArray(emails) || emails.length === 0) {
+    return res.status(400).json({ error: 'No participants selected.' });
+  }
+
+  const placeholders = emails.map(() => '?').join(',');
+  db.prepare(`DELETE FROM participants WHERE email IN (${placeholders})`).run(...emails);
+
+  res.json({ success: true });
+});
+
 // Export participants as Excel
 app.get('/api/admin/export', async (req, res) => {
   const participants = db.prepare(`
