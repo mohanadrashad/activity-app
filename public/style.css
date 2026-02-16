@@ -316,6 +316,50 @@ tbody tr:hover {
   font-style: italic;
 }
 
+/* Language Toggle */
+.lang-toggle {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.lang-btn {
+  padding: 6px 16px;
+  border: 2px solid #1a73e8;
+  border-radius: 20px;
+  background: #fff;
+  color: #1a73e8;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.lang-btn.active {
+  background: #1a73e8;
+  color: #fff;
+}
+
+.lang-btn:hover {
+  background: #1557b0;
+  color: #fff;
+}
+
+/* RTL Support */
+[dir="rtl"] {
+  font-family: 'Segoe UI', Tahoma, 'Arial', sans-serif;
+}
+
+[dir="rtl"] th,
+[dir="rtl"] td {
+  text-align: right;
+}
+
+[dir="rtl"] .actions {
+  flex-direction: row-reverse;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
   .form-row {

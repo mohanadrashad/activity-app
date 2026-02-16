@@ -154,15 +154,15 @@ async function loadParticipants() {
       else if (rank === 2) badgeClass = 'silver';
       else if (rank === 3) badgeClass = 'bronze';
 
-      const fullName = [p.first_name, p.middle_name, p.last_name].filter(Boolean).join(' ');
+      const fullName = [p.first_name, p.last_name].filter(Boolean).join(' ');
 
       return `
         <tr>
           <td><span class="rank-badge ${badgeClass}">${rank}</span></td>
           <td>${escapeHtml(fullName)}</td>
-          <td>${escapeHtml(p.activity_name)}</td>
-          <td>${p.points}</td>
-          <td>${p.active_date}</td>
+          <td>${escapeHtml(p.email)}</td>
+          <td>${p.total_points}</td>
+          <td>${escapeHtml(p.activities)}</td>
         </tr>
       `;
     }).join('');

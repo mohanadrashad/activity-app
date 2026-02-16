@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,8 +8,12 @@
 </head>
 <body>
   <div class="container">
-    <h1>Activity Registration</h1>
-    <p class="subtitle">Register for today's available activities</p>
+    <div class="lang-toggle">
+      <button onclick="setLang('en')" id="btn-en" class="lang-btn active">English</button>
+      <button onclick="setLang('ar')" id="btn-ar" class="lang-btn">العربية</button>
+    </div>
+    <h1 data-i18n="title">Activity Registration</h1>
+    <p class="subtitle" data-i18n="subtitle">Register for today's available activities</p>
 
     <div class="card">
       <div id="message" class="message"></div>
@@ -17,27 +21,28 @@
       <form id="registrationForm">
         <div class="form-row">
           <div class="form-group">
-            <label for="firstName">First Name *</label>
-            <input type="text" id="firstName" required placeholder="Enter first name">
+            <label for="firstName" data-i18n="firstName">First Name *</label>
+            <input type="text" id="firstName" required data-i18n-placeholder="firstNamePlaceholder" placeholder="Enter first name">
           </div>
           <div class="form-group">
-            <label for="middleName">Middle Name</label>
-            <input type="text" id="middleName" placeholder="Enter middle name">
-          </div>
-          <div class="form-group">
-            <label for="lastName">Last Name *</label>
-            <input type="text" id="lastName" required placeholder="Enter last name">
+            <label for="lastName" data-i18n="lastName">Last Name *</label>
+            <input type="text" id="lastName" required data-i18n-placeholder="lastNamePlaceholder" placeholder="Enter last name">
           </div>
         </div>
 
         <div class="form-group">
-          <label for="activity">Select Activity *</label>
+          <label for="email" data-i18n="email">Email *</label>
+          <input type="email" id="email" required data-i18n-placeholder="emailPlaceholder" placeholder="Enter your email">
+        </div>
+
+        <div class="form-group">
+          <label for="activity" data-i18n="selectActivity">Select Activity *</label>
           <select id="activity" required>
-            <option value="">-- Select an activity --</option>
+            <option value="" data-i18n="selectOption">-- Select an activity --</option>
           </select>
         </div>
 
-        <button type="submit" class="btn btn-primary" id="submitBtn">Submit Registration</button>
+        <button type="submit" class="btn btn-primary" id="submitBtn" data-i18n="submit">Submit Registration</button>
       </form>
     </div>
   </div>

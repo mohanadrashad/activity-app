@@ -30,11 +30,32 @@ db.exec(`
     first_name TEXT NOT NULL,
     middle_name TEXT,
     last_name TEXT NOT NULL,
+    email TEXT NOT NULL,
     activity_id INTEGER NOT NULL,
     submitted_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (activity_id) REFERENCES activities(id)
   );
 `);
+
+// Migration: add email column if missing (for existing databases)
+try {
+  db.exec(`ALTER TABLE participants ADD COLUMN email TEXT NOT NULL DEFAULT ''`);
+} catch (e) {
+  // Column already exists
+}
+
+// Migration: add unique constraint on email + activity_id
+try {
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_email_activity ON participants(email, activity_id)`);
+} catch (e) {
+  // Index may fail if duplicates already exist — clean up first
+  db.exec(`
+    DELETE FROM participants WHERE id NOT IN (
+      SELECT MIN(id) FROM participants GROUP BY email, activity_id
+    )
+  `);
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_email_activity ON participants(email, activity_id)`);
+}
 
 // --- Public Routes ---
 
@@ -49,10 +70,10 @@ app.get('/api/activities/today', (req, res) => {
 
 // Register a participant
 app.post('/api/register', (req, res) => {
-  const { first_name, middle_name, last_name, activity_id } = req.body;
+  const { first_name, last_name, email, activity_id } = req.body;
 
-  if (!first_name || !last_name || !activity_id) {
-    return res.status(400).json({ error: 'First name, last name, and activity are required.' });
+  if (!first_name || !last_name || !email || !activity_id) {
+    return res.status(400).json({ error: 'First name, last name, email, and activity are required.' });
   }
 
   const activity = db.prepare('SELECT * FROM activities WHERE id = ?').get(activity_id);
@@ -65,9 +86,18 @@ app.post('/api/register', (req, res) => {
     return res.status(400).json({ error: 'This activity is not available today.' });
   }
 
+  // Check for duplicate: same email + same activity
+  const existing = db.prepare(
+    'SELECT id FROM participants WHERE email = ? AND activity_id = ?'
+  ).get(email, activity_id);
+
+  if (existing) {
+    return res.status(400).json({ error: 'You have already registered for this activity.' });
+  }
+
   const result = db.prepare(
-    'INSERT INTO participants (first_name, middle_name, last_name, activity_id) VALUES (?, ?, ?, ?)'
-  ).run(first_name, middle_name || '', last_name, activity_id);
+    'INSERT INTO participants (first_name, middle_name, last_name, email, activity_id) VALUES (?, ?, ?, ?, ?)'
+  ).run(first_name, '', last_name, email, activity_id);
 
   res.json({ success: true, id: result.lastInsertRowid });
 });
@@ -127,21 +157,25 @@ app.delete('/api/admin/activities/:id', (req, res) => {
   res.json({ success: true });
 });
 
-// Get all participants with activity info, ranked by points
+// Get all participants aggregated by email, ranked by total points
 app.get('/api/admin/participants', (req, res) => {
   const participants = db.prepare(`
     SELECT
-      p.id,
-      p.first_name,
-      p.middle_name,
-      p.last_name,
-      a.name AS activity_name,
-      a.points,
-      a.active_date,
-      p.submitted_at
+      p.email,
+      first_reg.first_name,
+      first_reg.last_name,
+      SUM(a.points) AS total_points,
+      COUNT(a.id) AS activity_count,
+      GROUP_CONCAT(a.name, ', ') AS activities
     FROM participants p
     JOIN activities a ON p.activity_id = a.id
-    ORDER BY a.points DESC, p.submitted_at ASC
+    JOIN (
+      SELECT email, first_name, last_name
+      FROM participants
+      WHERE id IN (SELECT MIN(id) FROM participants GROUP BY email)
+    ) first_reg ON first_reg.email = p.email
+    GROUP BY p.email
+    ORDER BY total_points DESC
   `).all();
   res.json(participants);
 });
@@ -150,16 +184,21 @@ app.get('/api/admin/participants', (req, res) => {
 app.get('/api/admin/export', async (req, res) => {
   const participants = db.prepare(`
     SELECT
-      p.first_name,
-      p.middle_name,
-      p.last_name,
-      a.name AS activity_name,
-      a.points,
-      a.active_date,
-      p.submitted_at
+      p.email,
+      first_reg.first_name,
+      first_reg.last_name,
+      SUM(a.points) AS total_points,
+      COUNT(a.id) AS activity_count,
+      GROUP_CONCAT(a.name, ', ') AS activities
     FROM participants p
     JOIN activities a ON p.activity_id = a.id
-    ORDER BY a.points DESC, p.submitted_at ASC
+    JOIN (
+      SELECT email, first_name, last_name
+      FROM participants
+      WHERE id IN (SELECT MIN(id) FROM participants GROUP BY email)
+    ) first_reg ON first_reg.email = p.email
+    GROUP BY p.email
+    ORDER BY total_points DESC
   `).all();
 
   const workbook = new ExcelJS.Workbook();
@@ -168,12 +207,11 @@ app.get('/api/admin/export', async (req, res) => {
   sheet.columns = [
     { header: 'Rank', key: 'rank', width: 8 },
     { header: 'First Name', key: 'first_name', width: 18 },
-    { header: 'Middle Name', key: 'middle_name', width: 18 },
     { header: 'Last Name', key: 'last_name', width: 18 },
-    { header: 'Activity', key: 'activity_name', width: 25 },
-    { header: 'Points', key: 'points', width: 10 },
-    { header: 'Activity Date', key: 'active_date', width: 15 },
-    { header: 'Submitted At', key: 'submitted_at', width: 22 },
+    { header: 'Email', key: 'email', width: 25 },
+    { header: 'Total Points', key: 'total_points', width: 12 },
+    { header: 'Activities', key: 'activities', width: 35 },
+    { header: 'Activity Count', key: 'activity_count', width: 15 },
   ];
 
   // Style header row
