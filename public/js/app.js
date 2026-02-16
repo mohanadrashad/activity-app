@@ -1,7 +1,6 @@
 // --- Translations ---
 const translations = {
   en: {
-    title: 'Activity Registration',
     subtitle: 'Register for today\'s available activities',
     firstName: 'First Name *',
     firstNamePlaceholder: 'Enter first name',
@@ -17,9 +16,9 @@ const translations = {
     errorFillFields: 'Please fill in all required fields.',
     errorServer: 'Server error. Please try again.',
     errorLoadActivities: 'Failed to load activities.',
+    footer: 'Bader - Activity Registration Platform',
   },
   ar: {
-    title: 'تسجيل النشاط',
     subtitle: 'سجّل في الأنشطة المتاحة اليوم',
     firstName: '* الاسم الأول',
     firstNamePlaceholder: 'أدخل الاسم الأول',
@@ -35,6 +34,7 @@ const translations = {
     errorFillFields: 'يرجى ملء جميع الحقول المطلوبة.',
     errorServer: 'خطأ في الخادم. يرجى المحاولة مرة أخرى.',
     errorLoadActivities: 'فشل في تحميل الأنشطة.',
+    footer: 'بادر - منصة تسجيل الأنشطة',
   }
 };
 

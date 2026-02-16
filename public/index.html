@@ -3,18 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Activity Registration</title>
+  <title>بادر - Bader</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="container">
+
+  <header class="brand-header">
     <div class="lang-toggle">
       <button onclick="setLang('en')" id="btn-en" class="lang-btn active">English</button>
       <button onclick="setLang('ar')" id="btn-ar" class="lang-btn">العربية</button>
     </div>
-    <h1 data-i18n="title">Activity Registration</h1>
-    <p class="subtitle" data-i18n="subtitle">Register for today's available activities</p>
+    <div class="brand-logo">بادر</div>
+    <div class="brand-logo-en">Bader</div>
+    <p class="brand-subtitle" data-i18n="subtitle">Register for today's available activities</p>
+  </header>
 
+  <div class="container">
     <div class="card">
       <div id="message" class="message"></div>
 
@@ -45,6 +49,11 @@
         <button type="submit" class="btn btn-primary" id="submitBtn" data-i18n="submit">Submit Registration</button>
       </form>
     </div>
+
+    <footer class="page-footer">
+      <div class="footer-line"></div>
+      <span data-i18n="footer">Bader - Activity Registration Platform</span>
+    </footer>
   </div>
 
   <script src="js/app.js"></script>
