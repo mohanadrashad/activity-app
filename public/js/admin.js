@@ -169,6 +169,9 @@ async function toggleActivityParticipants(activityId, btn) {
     }
 
     container.innerHTML = `
+      <div class="sub-table-header">
+        <button class="btn btn-export" onclick="window.location.href='/api/admin/activities/${activityId}/export'" style="padding:6px 14px; font-size:13px;">Download Excel</button>
+      </div>
       <table class="sub-table">
         <thead>
           <tr>

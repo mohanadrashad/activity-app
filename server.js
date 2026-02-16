@@ -140,6 +140,46 @@ app.get('/api/admin/activities/:id/participants', (req, res) => {
   res.json(participants);
 });
 
+// Export participants for a specific activity as Excel
+app.get('/api/admin/activities/:id/export', async (req, res) => {
+  const { id } = req.params;
+  const activity = db.prepare('SELECT * FROM activities WHERE id = ?').get(id);
+  if (!activity) {
+    return res.status(404).json({ error: 'Activity not found.' });
+  }
+
+  const participants = db.prepare(`
+    SELECT p.first_name, p.last_name, p.email, p.submitted_at
+    FROM participants p
+    WHERE p.activity_id = ?
+    ORDER BY p.submitted_at ASC
+  `).all(id);
+
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet('Participants');
+
+  sheet.columns = [
+    { header: '#', key: 'num', width: 6 },
+    { header: 'First Name', key: 'first_name', width: 18 },
+    { header: 'Last Name', key: 'last_name', width: 18 },
+    { header: 'Email', key: 'email', width: 25 },
+    { header: 'Registered At', key: 'submitted_at', width: 22 },
+  ];
+
+  sheet.getRow(1).font = { bold: true };
+
+  participants.forEach((p, i) => {
+    sheet.addRow({ num: i + 1, ...p });
+  });
+
+  const filename = `${activity.name.replace(/[^a-zA-Z0-9\u0600-\u06FF ]/g, '')}_participants.xlsx`;
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+  await workbook.xlsx.write(res);
+  res.end();
+});
+
 // Create activity
 app.post('/api/admin/activities', (req, res) => {
   const { name, points, active_date } = req.body;

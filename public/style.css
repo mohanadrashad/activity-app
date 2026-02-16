@@ -551,6 +551,12 @@ tbody tr {
   overflow-y: auto;
 }
 
+.sub-table-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
 .sub-table {
   margin-top: 0;
   border-radius: var(--radius);
