@@ -62,6 +62,7 @@
 
         <div class="card">
           <h2>All Activities</h2>
+          <input type="text" id="searchActivities" class="search-input" placeholder="Search activities by name or date..." oninput="filterActivities()">
           <div id="activitiesTableWrapper">
             <table>
               <thead>
@@ -90,6 +91,7 @@
               <button class="btn btn-export" onclick="exportExcel()">Export to Excel</button>
             </div>
           </div>
+          <input type="text" id="searchParticipants" class="search-input" placeholder="Search by name, email, or activity..." oninput="filterParticipants()">
           <div id="participantsTableWrapper">
             <table>
               <thead>

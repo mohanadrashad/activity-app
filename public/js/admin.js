@@ -388,6 +388,30 @@ function exportExcel() {
   window.location.href = '/api/admin/export';
 }
 
+// --- Search / Filter ---
+function filterActivities() {
+  const query = document.getElementById('searchActivities').value.toLowerCase();
+  const rows = document.querySelectorAll('#activitiesBody tr');
+  rows.forEach(row => {
+    if (row.classList.contains('participants-row')) {
+      // Hide expanded participant rows when filtering
+      if (query) row.style.display = 'none';
+      return;
+    }
+    const text = row.textContent.toLowerCase();
+    row.style.display = text.includes(query) ? '' : 'none';
+  });
+}
+
+function filterParticipants() {
+  const query = document.getElementById('searchParticipants').value.toLowerCase();
+  const rows = document.querySelectorAll('#participantsBody tr');
+  rows.forEach(row => {
+    const text = row.textContent.toLowerCase();
+    row.style.display = text.includes(query) ? '' : 'none';
+  });
+}
+
 // --- Utility ---
 function escapeHtml(str) {
   const div = document.createElement('div');
