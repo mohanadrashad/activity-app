@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>بادر - Ranking</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .ranking-card {
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 18px;
+    }
+    .back-link:hover {
+      text-decoration: underline;
+    }
+    .ranking-table td:nth-child(3),
+    .ranking-table th:nth-child(3) {
+      text-align: center;
+    }
+    .ranking-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+    }
+    .ranking-empty-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+    .points-cell {
+      font-weight: 700;
+      color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+
+  <header class="brand-header">
+    <div class="lang-toggle">
+      <button onclick="setLang('en')" id="btn-en" class="lang-btn active">English</button>
+      <button onclick="setLang('ar')" id="btn-ar" class="lang-btn">العربية</button>
+    </div>
+    <div class="brand-logo">بادر</div>
+    <div class="brand-logo-en">Bader</div>
+    <p class="brand-subtitle" data-i18n="rankingSubtitle">Participants Ranking</p>
+  </header>
+
+  <div class="container">
+    <a href="index.html" class="back-link" data-i18n="backToRegister">&larr; Back to Registration</a>
+
+    <div class="card ranking-card">
+      <h2 data-i18n="rankingTitle">Ranking</h2>
+      <div id="rankingContent">
+        <p class="no-data">Loading...</p>
+      </div>
+    </div>
+
+    <footer class="page-footer">
+      <div class="footer-line"></div>
+      <span data-i18n="footer">Bader - Activity Registration Platform</span>
+    </footer>
+  </div>
+
+  <script src="js/ranking.js"></script>
+</body>
+</html>

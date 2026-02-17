@@ -16,6 +16,7 @@ const translations = {
     errorFillFields: 'Please fill in all required fields.',
     errorServer: 'Server error. Please try again.',
     errorLoadActivities: 'Failed to load activities.',
+    viewRanking: 'View Ranking',
     footer: 'Bader - Activity Registration Platform',
   },
   ar: {
@@ -34,6 +35,7 @@ const translations = {
     errorFillFields: 'يرجى ملء جميع الحقول المطلوبة.',
     errorServer: 'خطأ في الخادم. يرجى المحاولة مرة أخرى.',
     errorLoadActivities: 'فشل في تحميل الأنشطة.',
+    viewRanking: 'عرض الترتيب',
     footer: 'بادر - منصة تسجيل الأنشطة',
   }
 };

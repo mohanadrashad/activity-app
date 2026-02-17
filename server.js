@@ -137,6 +137,27 @@ app.post('/api/register', (req, res) => {
   res.json({ success: true, id: result.lastInsertRowid });
 });
 
+// Get public ranking (aggregated by email, sorted by total points)
+app.get('/api/ranking', (req, res) => {
+  const participants = db.prepare(`
+    SELECT
+      p.email,
+      first_reg.first_name,
+      first_reg.last_name,
+      SUM(a.points) AS total_points
+    FROM participants p
+    JOIN activities a ON p.activity_id = a.id
+    JOIN (
+      SELECT email, first_name, last_name
+      FROM participants
+      WHERE id IN (SELECT MIN(id) FROM participants GROUP BY email)
+    ) first_reg ON first_reg.email = p.email
+    GROUP BY p.email
+    ORDER BY total_points DESC
+  `).all();
+  res.json(participants);
+});
+
 // --- Admin Routes ---
 
 // Admin login
