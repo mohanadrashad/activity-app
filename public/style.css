@@ -602,6 +602,25 @@ tbody tr {
   padding: 8px 12px;
 }
 
+/* Role Badge */
+.role-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.role-super_admin {
+  background: linear-gradient(135deg, #D4A843, #E8C86A);
+  color: #3A2F00;
+}
+
+.role-admin {
+  background: var(--border-light);
+  color: var(--text-secondary);
+}
+
 /* No data message */
 .no-data {
   text-align: center;

@@ -3,10 +3,23 @@ const Database = require('better-sqlite3');
 const ExcelJS = require('exceljs');
 const cors = require('cors');
 const path = require('path');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = 3000;
-const ADMIN_PASSWORD = 'admin123';
+
+// --- Password Hashing ---
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password, stored) {
+  const [salt, hash] = stored.split(':');
+  const test = crypto.scryptSync(password, salt, 64).toString('hex');
+  return hash === test;
+}
 
 app.use(cors());
 app.use(express.json());
@@ -36,6 +49,25 @@ db.exec(`
     FOREIGN KEY (activity_id) REFERENCES activities(id)
   );
 `);
+
+// Admin users table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS admin_users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'admin',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
+// Seed super admin if not exists
+const superAdmin = db.prepare('SELECT id FROM admin_users WHERE email = ?').get('mohanad@lagloire.sa');
+if (!superAdmin) {
+  db.prepare('INSERT INTO admin_users (email, password_hash, role) VALUES (?, ?, ?)').run(
+    'mohanad@lagloire.sa', hashPassword('mohanad123'), 'super_admin'
+  );
+}
 
 // Migration: add email column if missing (for existing databases)
 try {
@@ -109,12 +141,75 @@ app.post('/api/register', (req, res) => {
 
 // Admin login
 app.post('/api/admin/login', (req, res) => {
-  const { password } = req.body;
-  if (password === ADMIN_PASSWORD) {
-    res.json({ success: true });
-  } else {
-    res.status(401).json({ error: 'Invalid password.' });
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required.' });
   }
+
+  const user = db.prepare('SELECT * FROM admin_users WHERE email = ?').get(email.trim().toLowerCase());
+  if (!user || !verifyPassword(password, user.password_hash)) {
+    return res.status(401).json({ error: 'Invalid email or password.' });
+  }
+
+  res.json({ success: true, email: user.email, role: user.role });
+});
+
+// --- Super Admin: User Management ---
+function requireSuperAdmin(req, res, next) {
+  const adminEmail = req.headers['x-admin-email'];
+  if (!adminEmail) {
+    return res.status(401).json({ error: 'Not authenticated.' });
+  }
+  const user = db.prepare('SELECT * FROM admin_users WHERE email = ?').get(adminEmail);
+  if (!user || user.role !== 'super_admin') {
+    return res.status(403).json({ error: 'Access denied. Super admin only.' });
+  }
+  next();
+}
+
+// List admin users
+app.get('/api/admin/users', requireSuperAdmin, (req, res) => {
+  const users = db.prepare('SELECT id, email, role, created_at FROM admin_users ORDER BY created_at ASC').all();
+  res.json(users);
+});
+
+// Create admin user
+app.post('/api/admin/users', requireSuperAdmin, (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required.' });
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const existing = db.prepare('SELECT id FROM admin_users WHERE email = ?').get(normalizedEmail);
+  if (existing) {
+    return res.status(400).json({ error: 'A user with this email already exists.' });
+  }
+
+  const result = db.prepare('INSERT INTO admin_users (email, password_hash, role) VALUES (?, ?, ?)').run(
+    normalizedEmail, hashPassword(password), 'admin'
+  );
+
+  res.json({ success: true, id: result.lastInsertRowid });
+});
+
+// Delete admin user
+app.delete('/api/admin/users/:id', requireSuperAdmin, (req, res) => {
+  const { id } = req.params;
+
+  const user = db.prepare('SELECT * FROM admin_users WHERE id = ?').get(id);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found.' });
+  }
+  if (user.role === 'super_admin') {
+    return res.status(400).json({ error: 'Cannot delete the super admin.' });
+  }
+
+  db.prepare('DELETE FROM admin_users WHERE id = ?').run(id);
+  res.json({ success: true });
 });
 
 // List all activities with participant count
@@ -360,5 +455,4 @@ app.get('/api/admin/export', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
   console.log(`Admin dashboard: http://localhost:${PORT}/admin.html`);
-  console.log(`Admin password: ${ADMIN_PASSWORD}`);
 });

@@ -3,25 +3,38 @@ const dashboard = document.getElementById('dashboard');
 const loginForm = document.getElementById('loginForm');
 const loginError = document.getElementById('loginError');
 
+// --- Auth State ---
+let currentUser = { email: '', role: '' };
+
 // --- Login ---
 loginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  const email = document.getElementById('loginEmail').value.trim();
   const password = document.getElementById('password').value;
 
   try {
     const res = await fetch('/api/admin/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ email, password }),
     });
 
+    const data = await res.json();
+
     if (res.ok) {
+      currentUser = { email: data.email, role: data.role };
       loginModal.style.display = 'none';
       dashboard.style.display = 'block';
+
+      // Show Users tab only for super_admin
+      if (currentUser.role === 'super_admin') {
+        document.getElementById('usersTab').style.display = '';
+      }
+
       loadActivities();
       loadParticipants();
     } else {
-      loginError.textContent = 'Invalid password. Try again.';
+      loginError.textContent = data.error || 'Invalid credentials.';
       loginError.className = 'message error';
     }
   } catch {
@@ -40,6 +53,7 @@ document.querySelectorAll('.tab').forEach(tab => {
 
     if (tab.dataset.tab === 'participants') loadParticipants();
     if (tab.dataset.tab === 'activities') loadActivities();
+    if (tab.dataset.tab === 'users') loadUsers();
   });
 });
 
@@ -386,6 +400,89 @@ function editParticipant(email, firstName, lastName) {
 // --- Export ---
 function exportExcel() {
   window.location.href = '/api/admin/export';
+}
+
+// --- Users Management (Super Admin) ---
+async function loadUsers() {
+  try {
+    const res = await fetch('/api/admin/users', {
+      headers: { 'x-admin-email': currentUser.email },
+    });
+    const users = await res.json();
+    const tbody = document.getElementById('usersBody');
+    const noData = document.getElementById('noUsers');
+
+    if (!Array.isArray(users) || users.length === 0) {
+      tbody.innerHTML = '';
+      noData.style.display = 'block';
+      return;
+    }
+
+    noData.style.display = 'none';
+    tbody.innerHTML = users.map(u => `
+      <tr>
+        <td>${escapeHtml(u.email)}</td>
+        <td><span class="role-badge role-${u.role}">${u.role === 'super_admin' ? 'Super Admin' : 'Admin'}</span></td>
+        <td>${u.created_at}</td>
+        <td class="actions">
+          ${u.role !== 'super_admin' ? `<button class="btn btn-danger" onclick="deleteUser(${u.id})">Delete</button>` : ''}
+        </td>
+      </tr>
+    `).join('');
+  } catch {
+    alert('Failed to load users.');
+  }
+}
+
+document.getElementById('createUserForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const email = document.getElementById('newUserEmail').value.trim();
+  const password = document.getElementById('newUserPassword').value;
+
+  if (!email || !password) return;
+
+  try {
+    const res = await fetch('/api/admin/users', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-email': currentUser.email,
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      document.getElementById('createUserForm').reset();
+      loadUsers();
+    } else {
+      alert(data.error || 'Failed to create user.');
+    }
+  } catch {
+    alert('Failed to create user.');
+  }
+});
+
+async function deleteUser(id) {
+  if (!confirm('Delete this admin user?')) return;
+
+  try {
+    const res = await fetch(`/api/admin/users/${id}`, {
+      method: 'DELETE',
+      headers: { 'x-admin-email': currentUser.email },
+    });
+
+    if (res.ok) {
+      loadUsers();
+    } else {
+      const data = await res.json();
+      alert(data.error || 'Failed to delete user.');
+    }
+  } catch {
+    alert('Failed to delete user.');
+  }
 }
 
 // --- Search / Filter ---

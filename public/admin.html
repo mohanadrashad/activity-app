@@ -16,8 +16,12 @@
       <div id="loginError" class="message"></div>
       <form id="loginForm">
         <div class="form-group">
+          <label for="loginEmail">Email</label>
+          <input type="email" id="loginEmail" required placeholder="Enter your email">
+        </div>
+        <div class="form-group">
           <label for="password">Password</label>
-          <input type="password" id="password" required placeholder="Enter admin password">
+          <input type="password" id="password" required placeholder="Enter password">
         </div>
         <button type="submit" class="btn btn-primary">Login</button>
       </form>
@@ -35,6 +39,7 @@
       <div class="tabs">
         <div class="tab active" data-tab="activities">Activities</div>
         <div class="tab" data-tab="participants">Participants</div>
+        <div class="tab" data-tab="users" id="usersTab" style="display:none;">Users</div>
       </div>
 
       <!-- Activities Tab -->
@@ -109,6 +114,44 @@
             </table>
           </div>
           <p id="noParticipants" class="no-data" style="display:none;">No participants registered yet.</p>
+        </div>
+      </div>
+
+      <!-- Users Tab (super admin only) -->
+      <div id="tab-users" class="tab-content">
+        <div class="card">
+          <h2>Create New Admin User</h2>
+          <form id="createUserForm">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="newUserEmail">Email</label>
+                <input type="email" id="newUserEmail" required placeholder="user@example.com">
+              </div>
+              <div class="form-group">
+                <label for="newUserPassword">Password</label>
+                <input type="password" id="newUserPassword" required placeholder="Enter password" minlength="6">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-success">Create User</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2>Admin Users</h2>
+          <div id="usersTableWrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Created At</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="usersBody"></tbody>
+            </table>
+          </div>
+          <p id="noUsers" class="no-data" style="display:none;">No users found.</p>
         </div>
       </div>
 
