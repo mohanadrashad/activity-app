@@ -96,7 +96,7 @@ async function loadActivities() {
     activities.forEach(a => {
       const opt = document.createElement('option');
       opt.value = a.id;
-      opt.textContent = `${a.name} (${a.points} pts)`;
+      opt.textContent = a.name;
       activitySelect.appendChild(opt);
     });
   } catch (err) {
