@@ -4,6 +4,7 @@ const ExcelJS = require('exceljs');
 const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -24,6 +25,17 @@ function verifyPassword(password, stored) {
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Clean URLs: /ranking → /ranking.html, /admin → /admin.html
+app.use((req, res, next) => {
+  if (!path.extname(req.path) && req.path !== '/') {
+    const filePath = path.join(__dirname, 'public', req.path + '.html');
+    if (fs.existsSync(filePath)) {
+      return res.sendFile(filePath);
+    }
+  }
+  next();
+});
 
 // --- Database Setup ---
 const dbPath = process.env.DATABASE_PATH || path.join(__dirname, 'database.db');
