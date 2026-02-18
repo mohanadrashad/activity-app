@@ -6,7 +6,7 @@ const path = require('path');
 const crypto = require('crypto');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // --- Password Hashing ---
 function hashPassword(password) {
@@ -26,7 +26,8 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // --- Database Setup ---
-const db = new Database(path.join(__dirname, 'database.db'));
+const dbPath = process.env.DATABASE_PATH || path.join(__dirname, 'database.db');
+const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
