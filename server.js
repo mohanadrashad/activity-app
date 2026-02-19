@@ -301,12 +301,20 @@ app.get('/api/admin/activities/:id/export', async (req, res) => {
     sheet.addRow({ num: i + 1, ...p });
   });
 
-  const filename = `${activity.name.replace(/[^a-zA-Z0-9\u0600-\u06FF ]/g, '')}_participants.xlsx`;
+  const safeName = activity.name.replace(/[^a-zA-Z0-9 ]/g, '').trim() || 'activity';
+  const filename = `${safeName}_participants.xlsx`;
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"; filename*=UTF-8''${encodeURIComponent(activity.name + '_participants.xlsx')}`);
 
-  await workbook.xlsx.write(res);
-  res.end();
+  try {
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('Excel export error:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to export.' });
+    }
+  }
 });
 
 // Create activity
