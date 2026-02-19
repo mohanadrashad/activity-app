@@ -4,7 +4,22 @@ const loginForm = document.getElementById('loginForm');
 const loginError = document.getElementById('loginError');
 
 // --- Auth State ---
-let currentUser = { email: '', role: '' };
+let currentUser = JSON.parse(localStorage.getItem('adminUser') || '{"email":"","role":""}');
+
+function showDashboard() {
+  loginModal.style.display = 'none';
+  dashboard.style.display = 'block';
+  if (currentUser.role === 'super_admin') {
+    document.getElementById('usersTab').style.display = '';
+  }
+  loadActivities();
+  loadParticipants();
+}
+
+// Restore session on page load
+if (currentUser.email) {
+  showDashboard();
+}
 
 // --- Login ---
 loginForm.addEventListener('submit', async (e) => {
@@ -23,16 +38,8 @@ loginForm.addEventListener('submit', async (e) => {
 
     if (res.ok) {
       currentUser = { email: data.email, role: data.role };
-      loginModal.style.display = 'none';
-      dashboard.style.display = 'block';
-
-      // Show Users tab only for super_admin
-      if (currentUser.role === 'super_admin') {
-        document.getElementById('usersTab').style.display = '';
-      }
-
-      loadActivities();
-      loadParticipants();
+      localStorage.setItem('adminUser', JSON.stringify(currentUser));
+      showDashboard();
     } else {
       loginError.textContent = data.error || 'Invalid credentials.';
       loginError.className = 'message error';
@@ -507,6 +514,13 @@ function filterParticipants() {
     const text = row.textContent.toLowerCase();
     row.style.display = text.includes(query) ? '' : 'none';
   });
+}
+
+// --- Logout ---
+function logout() {
+  currentUser = { email: '', role: '' };
+  localStorage.removeItem('adminUser');
+  location.reload();
 }
 
 // --- Utility ---
