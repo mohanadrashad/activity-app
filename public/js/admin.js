@@ -99,6 +99,7 @@ activityForm.addEventListener('submit', async (e) => {
       activityForm.reset();
       editingId = null;
       actSubmitBtn.textContent = 'Create Activity';
+      document.getElementById('actCancelBtn').style.display = 'none';
       loadActivities();
     }
   } catch (err) {
@@ -164,7 +165,15 @@ function editActivity(id, name, points, date, recurrence) {
   document.getElementById('actDate').value = date;
   document.getElementById('actRecurrence').value = recurrence || 'none';
   actSubmitBtn.textContent = 'Update Activity';
+  document.getElementById('actCancelBtn').style.display = '';
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function cancelEditActivity() {
+  editingId = null;
+  activityForm.reset();
+  actSubmitBtn.textContent = 'Create Activity';
+  document.getElementById('actCancelBtn').style.display = 'none';
 }
 
 async function deleteActivity(id) {
