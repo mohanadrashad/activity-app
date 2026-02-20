@@ -91,7 +91,7 @@ activityForm.addEventListener('submit', async (e) => {
   try {
     const res = await fetch(url, {
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: adminHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(data),
     });
 
@@ -108,7 +108,7 @@ activityForm.addEventListener('submit', async (e) => {
 
 async function loadActivities() {
   try {
-    const res = await fetch('/api/admin/activities');
+    const res = await fetch('/api/admin/activities', { headers: adminHeaders() });
     const activities = await res.json();
     const tbody = document.getElementById('activitiesBody');
     const noData = document.getElementById('noActivities');
@@ -142,7 +142,7 @@ async function loadActivities() {
         </td>
         <td class="actions">
           <button class="btn btn-add-participant" onclick="showAddParticipant(${a.id})">Add Person</button>
-          <button class="btn btn-edit" onclick="editActivity(${a.id}, '${escapeHtml(a.name)}', ${a.points}, '${a.active_date}', '${a.recurrence}')">Edit</button>
+          <button class="btn btn-edit" onclick="editActivity(${a.id}, '${escapeAttr(a.name)}', ${a.points}, '${a.active_date}', '${a.recurrence}')">Edit</button>
           <button class="btn btn-danger" onclick="deleteActivity(${a.id})">Delete</button>
         </td>
       </tr>
@@ -171,7 +171,7 @@ async function deleteActivity(id) {
   if (!confirm('Delete this activity and all its participants?')) return;
 
   try {
-    await fetch(`/api/admin/activities/${id}`, { method: 'DELETE' });
+    await fetch(`/api/admin/activities/${id}`, { method: 'DELETE', headers: adminHeaders() });
     loadActivities();
     loadParticipants();
   } catch {
@@ -182,7 +182,7 @@ async function deleteActivity(id) {
 // --- Toggle Activity Visibility ---
 async function toggleVisibility(id) {
   try {
-    const res = await fetch(`/api/admin/activities/${id}/toggle`, { method: 'PATCH' });
+    const res = await fetch(`/api/admin/activities/${id}/toggle`, { method: 'PATCH', headers: adminHeaders() });
     if (res.ok) {
       loadActivities();
     } else {
@@ -210,7 +210,7 @@ async function toggleActivityParticipants(activityId, btn) {
   container.innerHTML = 'Loading...';
 
   try {
-    const res = await fetch(`/api/admin/activities/${activityId}/participants`);
+    const res = await fetch(`/api/admin/activities/${activityId}/participants`, { headers: adminHeaders() });
     const participants = await res.json();
 
     if (participants.length === 0) {
@@ -220,7 +220,7 @@ async function toggleActivityParticipants(activityId, btn) {
 
     container.innerHTML = `
       <div class="sub-table-header">
-        <button class="btn btn-export" onclick="window.location.href='/api/admin/activities/${activityId}/export'" style="padding:6px 14px; font-size:13px;">Download Excel</button>
+        <button class="btn btn-export" onclick="exportActivityExcel(${activityId})" style="padding:6px 14px; font-size:13px;">Download Excel</button>
       </div>
       <table class="sub-table">
         <thead>
@@ -307,7 +307,7 @@ document.getElementById('addPartForm').addEventListener('submit', async (e) => {
   try {
     const res = await fetch(`/api/admin/activities/${activityId}/participants`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: adminHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(data),
     });
 
@@ -332,7 +332,7 @@ document.getElementById('addPartForm').addEventListener('submit', async (e) => {
 // --- Participants ---
 async function loadParticipants() {
   try {
-    const res = await fetch('/api/admin/participants');
+    const res = await fetch('/api/admin/participants', { headers: adminHeaders() });
     const participants = await res.json();
     const tbody = document.getElementById('participantsBody');
     const noData = document.getElementById('noParticipants');
@@ -365,7 +365,7 @@ async function loadParticipants() {
           <td>${p.total_points}</td>
           <td>${escapeHtml(p.activities)}</td>
           <td class="actions">
-            <button class="btn btn-edit" onclick="editParticipant('${escapeHtml(p.email)}', '${escapeHtml(p.first_name)}', '${escapeHtml(p.last_name)}')">Edit</button>
+            <button class="btn btn-edit" onclick="editParticipant('${escapeAttr(p.email)}', '${escapeAttr(p.first_name)}', '${escapeAttr(p.last_name)}')">Edit</button>
           </td>
         </tr>
       `;
@@ -423,7 +423,7 @@ function editParticipant(email, firstName, lastName) {
 
   fetch(`/api/admin/participants/${encodeURIComponent(email)}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: adminHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ first_name: newFirst, last_name: newLast, new_email: newEmail }),
   }).then(res => {
     if (res.ok) {
@@ -435,8 +435,32 @@ function editParticipant(email, firstName, lastName) {
 }
 
 // --- Export ---
-function exportExcel() {
-  window.location.href = '/api/admin/export';
+async function exportActivityExcel(activityId) {
+  try {
+    const res = await fetch(`/api/admin/activities/${activityId}/export`, { headers: adminHeaders() });
+    if (!res.ok) return alert('Failed to export.');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `activity_${activityId}_participants.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch { alert('Failed to export.'); }
+}
+
+async function exportExcel() {
+  try {
+    const res = await fetch('/api/admin/export', { headers: adminHeaders() });
+    if (!res.ok) return alert('Failed to export.');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'participants.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch { alert('Failed to export.'); }
 }
 
 // --- Users Management (Super Admin) ---
@@ -554,8 +578,16 @@ function logout() {
 }
 
 // --- Utility ---
+function adminHeaders(extra = {}) {
+  return { 'x-admin-email': currentUser.email, ...extra };
+}
+
 function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+
+function escapeAttr(str) {
+  return str.replace(/&/g, '&amp;').replace(/'/g, '&#39;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

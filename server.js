@@ -5,6 +5,7 @@ const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
 const fs = require('fs');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -22,7 +23,11 @@ function verifyPassword(password, stored) {
   return hash === test;
 }
 
-app.use(cors());
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production'
+    ? ['https://www.itsbader.com', 'https://itsbader.com']
+    : true,
+}));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -115,6 +120,23 @@ try {
   // Column already exists
 }
 
+// --- Rate Limiting ---
+const registerLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // max 20 registrations per IP per 15 min
+  message: { error: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10, // max 10 login attempts per IP per 15 min
+  message: { error: 'Too many login attempts, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // --- Public Routes ---
 
 // Get activities available today
@@ -130,7 +152,7 @@ app.get('/api/activities/today', (req, res) => {
 });
 
 // Register a participant
-app.post('/api/register', (req, res) => {
+app.post('/api/register', registerLimiter, (req, res) => {
   const { first_name, last_name, email, activity_id } = req.body;
 
   if (!first_name || !last_name || !email || !activity_id) {
@@ -210,7 +232,7 @@ app.get('/api/ranking', (req, res) => {
 // --- Admin Routes ---
 
 // Admin login
-app.post('/api/admin/login', (req, res) => {
+app.post('/api/admin/login', loginLimiter, (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -225,7 +247,20 @@ app.post('/api/admin/login', (req, res) => {
   res.json({ success: true, email: user.email, role: user.role });
 });
 
-// --- Super Admin: User Management ---
+// --- Admin Auth Middleware ---
+function requireAdmin(req, res, next) {
+  const adminEmail = req.headers['x-admin-email'];
+  if (!adminEmail) {
+    return res.status(401).json({ error: 'Not authenticated.' });
+  }
+  const user = db.prepare('SELECT * FROM admin_users WHERE email = ?').get(adminEmail);
+  if (!user) {
+    return res.status(401).json({ error: 'Not authenticated.' });
+  }
+  req.adminUser = user;
+  next();
+}
+
 function requireSuperAdmin(req, res, next) {
   const adminEmail = req.headers['x-admin-email'];
   if (!adminEmail) {
@@ -250,6 +285,10 @@ app.post('/api/admin/users', requireSuperAdmin, (req, res) => {
 
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required.' });
+  }
+
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters.' });
   }
 
   const normalizedEmail = email.trim().toLowerCase();
@@ -283,7 +322,7 @@ app.delete('/api/admin/users/:id', requireSuperAdmin, (req, res) => {
 });
 
 // List all activities with participant count
-app.get('/api/admin/activities', (req, res) => {
+app.get('/api/admin/activities', requireAdmin, (req, res) => {
   const activities = db.prepare(`
     SELECT a.id, a.name, a.points, a.active_date, a.recurrence, a.visible,
       (SELECT COUNT(*) FROM participants p WHERE p.activity_id = a.id) AS participant_count
@@ -294,7 +333,7 @@ app.get('/api/admin/activities', (req, res) => {
 });
 
 // Get participants for a specific activity
-app.get('/api/admin/activities/:id/participants', (req, res) => {
+app.get('/api/admin/activities/:id/participants', requireAdmin, (req, res) => {
   const { id } = req.params;
   const participants = db.prepare(`
     SELECT p.id, p.first_name, p.last_name, p.email, p.submitted_at
@@ -306,7 +345,7 @@ app.get('/api/admin/activities/:id/participants', (req, res) => {
 });
 
 // Export participants for a specific activity as Excel
-app.get('/api/admin/activities/:id/export', async (req, res) => {
+app.get('/api/admin/activities/:id/export', requireAdmin, async (req, res) => {
   const { id } = req.params;
   const activity = db.prepare('SELECT * FROM activities WHERE id = ?').get(id);
   if (!activity) {
@@ -354,7 +393,7 @@ app.get('/api/admin/activities/:id/export', async (req, res) => {
 });
 
 // Create activity
-app.post('/api/admin/activities', (req, res) => {
+app.post('/api/admin/activities', requireAdmin, (req, res) => {
   const { name, points, active_date, recurrence } = req.body;
 
   if (!name || points == null || !active_date) {
@@ -370,7 +409,7 @@ app.post('/api/admin/activities', (req, res) => {
 });
 
 // Update activity
-app.put('/api/admin/activities/:id', (req, res) => {
+app.put('/api/admin/activities/:id', requireAdmin, (req, res) => {
   const { name, points, active_date, recurrence } = req.body;
   const { id } = req.params;
 
@@ -383,7 +422,7 @@ app.put('/api/admin/activities/:id', (req, res) => {
 });
 
 // Toggle activity visibility
-app.patch('/api/admin/activities/:id/toggle', (req, res) => {
+app.patch('/api/admin/activities/:id/toggle', requireAdmin, (req, res) => {
   const { id } = req.params;
   const activity = db.prepare('SELECT visible FROM activities WHERE id = ?').get(id);
   if (!activity) {
@@ -395,7 +434,7 @@ app.patch('/api/admin/activities/:id/toggle', (req, res) => {
 });
 
 // Delete activity
-app.delete('/api/admin/activities/:id', (req, res) => {
+app.delete('/api/admin/activities/:id', requireAdmin, (req, res) => {
   const { id } = req.params;
   db.prepare('DELETE FROM participants WHERE activity_id = ?').run(id);
   db.prepare('DELETE FROM activities WHERE id = ?').run(id);
@@ -403,7 +442,7 @@ app.delete('/api/admin/activities/:id', (req, res) => {
 });
 
 // Admin: add participant to a specific activity (no date restriction)
-app.post('/api/admin/activities/:id/participants', (req, res) => {
+app.post('/api/admin/activities/:id/participants', requireAdmin, (req, res) => {
   const { id } = req.params;
   const { first_name, last_name, email } = req.body;
 
@@ -434,7 +473,7 @@ app.post('/api/admin/activities/:id/participants', (req, res) => {
 });
 
 // Get all participants aggregated by email, ranked by total points
-app.get('/api/admin/participants', (req, res) => {
+app.get('/api/admin/participants', requireAdmin, (req, res) => {
   const participants = db.prepare(`
     SELECT
       p.email,
@@ -457,7 +496,7 @@ app.get('/api/admin/participants', (req, res) => {
 });
 
 // Update participant (by email)
-app.put('/api/admin/participants/:email', (req, res) => {
+app.put('/api/admin/participants/:email', requireAdmin, (req, res) => {
   const { email } = req.params;
   const { first_name, last_name, new_email } = req.body;
 
@@ -497,7 +536,7 @@ app.post('/api/admin/participants/delete', requireSuperAdmin, (req, res) => {
 });
 
 // Export participants as Excel
-app.get('/api/admin/export', async (req, res) => {
+app.get('/api/admin/export', requireAdmin, async (req, res) => {
   const participants = db.prepare(`
     SELECT
       p.email,
@@ -544,7 +583,33 @@ app.get('/api/admin/export', async (req, res) => {
   res.end();
 });
 
-app.listen(PORT, () => {
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+const server = app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
   console.log(`Admin dashboard: http://localhost:${PORT}/admin.html`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    db.close();
+    process.exit(0);
+  });
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  server.close(() => {
+    db.close();
+    process.exit(1);
+  });
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Rejection:', reason);
 });
