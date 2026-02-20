@@ -475,15 +475,15 @@ app.put('/api/admin/participants/:email', (req, res) => {
   res.json({ success: true });
 });
 
-// Delete a single participant by ID
-app.delete('/api/admin/participants/single/:id', (req, res) => {
+// Delete a single participant by ID (super admin only)
+app.delete('/api/admin/participants/single/:id', requireSuperAdmin, (req, res) => {
   const { id } = req.params;
   db.prepare('DELETE FROM participants WHERE id = ?').run(id);
   res.json({ success: true });
 });
 
-// Delete participants (bulk by emails)
-app.post('/api/admin/participants/delete', (req, res) => {
+// Delete participants (bulk by emails, super admin only)
+app.post('/api/admin/participants/delete', requireSuperAdmin, (req, res) => {
   const { emails } = req.body;
 
   if (!emails || !Array.isArray(emails) || emails.length === 0) {

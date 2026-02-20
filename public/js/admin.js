@@ -11,6 +11,9 @@ function showDashboard() {
   dashboard.style.display = 'block';
   if (currentUser.role === 'super_admin') {
     document.getElementById('usersTab').style.display = '';
+  } else {
+    document.getElementById('selectAll').style.display = 'none';
+    document.getElementById('deleteSelectedBtn').style.display = 'none';
   }
   loadActivities();
   loadParticipants();
@@ -237,7 +240,7 @@ async function toggleActivityParticipants(activityId, btn) {
               <td>${escapeHtml(p.email)}</td>
               <td>${p.submitted_at}</td>
               <td>
-                <button class="btn btn-danger" onclick="removeParticipantFromActivity(${p.id}, ${activityId})">Remove</button>
+                ${currentUser.role === 'super_admin' ? `<button class="btn btn-danger" onclick="removeParticipantFromActivity(${p.id}, ${activityId})">Remove</button>` : ''}
               </td>
             </tr>
           `).join('')}
@@ -253,7 +256,7 @@ async function removeParticipantFromActivity(participantId, activityId) {
   if (!confirm('Remove this participant from this activity?')) return;
 
   try {
-    const res = await fetch(`/api/admin/participants/single/${participantId}`, { method: 'DELETE' });
+    const res = await fetch(`/api/admin/participants/single/${participantId}`, { method: 'DELETE', headers: { 'x-admin-email': currentUser.email } });
     if (res.ok) {
       // Re-expand to refresh the list
       const btn = document.querySelector(`#participants-row-${activityId}`).previousElementSibling.querySelector('.btn-view-participants');
@@ -352,9 +355,10 @@ async function loadParticipants() {
 
       const fullName = [p.first_name, p.last_name].filter(Boolean).join(' ');
 
+      const isSuperAdmin = currentUser.role === 'super_admin';
       return `
         <tr>
-          <td><input type="checkbox" class="participant-checkbox" value="${escapeHtml(p.email)}" onchange="updateDeleteBtn()"></td>
+          ${isSuperAdmin ? `<td><input type="checkbox" class="participant-checkbox" value="${escapeHtml(p.email)}" onchange="updateDeleteBtn()"></td>` : '<td></td>'}
           <td><span class="rank-badge ${badgeClass}">${rank}</span></td>
           <td>${escapeHtml(fullName)}</td>
           <td>${escapeHtml(p.email)}</td>
@@ -394,7 +398,7 @@ async function deleteSelectedParticipants() {
   try {
     const res = await fetch('/api/admin/participants/delete', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-admin-email': currentUser.email },
       body: JSON.stringify({ emails }),
     });
 
