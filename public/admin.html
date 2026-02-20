@@ -61,6 +61,13 @@
                 <label for="actDate">Active Date</label>
                 <input type="date" id="actDate" required>
               </div>
+              <div class="form-group">
+                <label for="actRecurrence">Recurrence</label>
+                <select id="actRecurrence">
+                  <option value="none">One-time</option>
+                  <option value="weekly">Weekly</option>
+                </select>
+              </div>
             </div>
             <button type="submit" class="btn btn-success" id="actSubmitBtn">Create Activity</button>
           </form>
@@ -76,6 +83,7 @@
                   <th>Name</th>
                   <th>Points</th>
                   <th>Date</th>
+                  <th>Type</th>
                   <th>Participants</th>
                   <th>Actions</th>
                 </tr>
@@ -84,6 +92,7 @@
             </table>
           </div>
           <p id="noActivities" class="no-data" style="display:none;">No activities created yet.</p>
+          <!-- Note: participant expansion rows use colspan=6 set in admin.js -->
         </div>
       </div>
 

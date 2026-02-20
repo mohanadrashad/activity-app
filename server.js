@@ -99,18 +99,33 @@ db.exec(`
   )
 `);
 
-// Migration: add unique constraint on email + activity_id
+// Migration: add index on email + activity_id (non-unique to support weekly recurring)
 db.exec(`DROP INDEX IF EXISTS idx_email_activity`);
-db.exec(`CREATE UNIQUE INDEX idx_email_activity ON participants(email, activity_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_email_activity_nonunique ON participants(email, activity_id)`);
+
+// Migration: add recurrence and visible columns to activities
+try {
+  db.exec(`ALTER TABLE activities ADD COLUMN recurrence TEXT NOT NULL DEFAULT 'none'`);
+} catch (e) {
+  // Column already exists
+}
+try {
+  db.exec(`ALTER TABLE activities ADD COLUMN visible INTEGER NOT NULL DEFAULT 1`);
+} catch (e) {
+  // Column already exists
+}
 
 // --- Public Routes ---
 
 // Get activities available today
 app.get('/api/activities/today', (req, res) => {
   const today = new Date().toISOString().split('T')[0];
-  const activities = db.prepare(
-    'SELECT id, name, points, active_date FROM activities WHERE active_date = ?'
-  ).all(today);
+  const todayDow = new Date().getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const activities = db.prepare(`
+    SELECT id, name, points, active_date, recurrence FROM activities
+    WHERE visible = 1
+      AND (active_date = ? OR (recurrence = 'weekly' AND CAST(strftime('%w', active_date) AS INTEGER) = ?))
+  `).all(today, todayDow);
   res.json(activities);
 });
 
@@ -129,18 +144,39 @@ app.post('/api/register', (req, res) => {
     return res.status(400).json({ error: 'Invalid activity selected.' });
   }
 
-  const today = new Date().toISOString().split('T')[0];
-  if (activity.active_date !== today) {
-    return res.status(400).json({ error: 'This activity is not available today.' });
+  if (!activity.visible) {
+    return res.status(400).json({ error: 'This activity is not available.' });
   }
 
-  // Check for duplicate: same email + same activity
-  const existing = db.prepare(
-    'SELECT id FROM participants WHERE email = ? AND activity_id = ?'
-  ).get(normalizedEmail, activity_id);
+  const today = new Date().toISOString().split('T')[0];
+  const todayDow = new Date().getDay();
+  const activityDow = new Date(activity.active_date + 'T00:00:00').getDay();
 
-  if (existing) {
-    return res.status(400).json({ error: 'You have already registered for this activity.' });
+  if (activity.recurrence === 'weekly') {
+    if (activityDow !== todayDow) {
+      return res.status(400).json({ error: 'This activity is not available today.' });
+    }
+    // For weekly: check if already registered this week
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    const weekStartStr = weekStart.toISOString().split('T')[0];
+    const existing = db.prepare(
+      "SELECT id FROM participants WHERE email = ? AND activity_id = ? AND submitted_at >= ?"
+    ).get(normalizedEmail, activity_id, weekStartStr);
+    if (existing) {
+      return res.status(400).json({ error: 'You have already registered for this activity this week.' });
+    }
+  } else {
+    if (activity.active_date !== today) {
+      return res.status(400).json({ error: 'This activity is not available today.' });
+    }
+    // For one-time: check duplicate same email + same activity
+    const existing = db.prepare(
+      'SELECT id FROM participants WHERE email = ? AND activity_id = ?'
+    ).get(normalizedEmail, activity_id);
+    if (existing) {
+      return res.status(400).json({ error: 'You have already registered for this activity.' });
+    }
   }
 
   const result = db.prepare(
@@ -249,7 +285,7 @@ app.delete('/api/admin/users/:id', requireSuperAdmin, (req, res) => {
 // List all activities with participant count
 app.get('/api/admin/activities', (req, res) => {
   const activities = db.prepare(`
-    SELECT a.id, a.name, a.points, a.active_date,
+    SELECT a.id, a.name, a.points, a.active_date, a.recurrence, a.visible,
       (SELECT COUNT(*) FROM participants p WHERE p.activity_id = a.id) AS participant_count
     FROM activities a
     ORDER BY a.active_date DESC
@@ -319,29 +355,43 @@ app.get('/api/admin/activities/:id/export', async (req, res) => {
 
 // Create activity
 app.post('/api/admin/activities', (req, res) => {
-  const { name, points, active_date } = req.body;
+  const { name, points, active_date, recurrence } = req.body;
 
   if (!name || points == null || !active_date) {
     return res.status(400).json({ error: 'Name, points, and date are required.' });
   }
 
+  const rec = recurrence === 'weekly' ? 'weekly' : 'none';
   const result = db.prepare(
-    'INSERT INTO activities (name, points, active_date) VALUES (?, ?, ?)'
-  ).run(name, parseInt(points), active_date);
+    'INSERT INTO activities (name, points, active_date, recurrence) VALUES (?, ?, ?, ?)'
+  ).run(name, parseInt(points), active_date, rec);
 
   res.json({ success: true, id: result.lastInsertRowid });
 });
 
 // Update activity
 app.put('/api/admin/activities/:id', (req, res) => {
-  const { name, points, active_date } = req.body;
+  const { name, points, active_date, recurrence } = req.body;
   const { id } = req.params;
 
+  const rec = recurrence === 'weekly' ? 'weekly' : 'none';
   db.prepare(
-    'UPDATE activities SET name = ?, points = ?, active_date = ? WHERE id = ?'
-  ).run(name, parseInt(points), active_date, id);
+    'UPDATE activities SET name = ?, points = ?, active_date = ?, recurrence = ? WHERE id = ?'
+  ).run(name, parseInt(points), active_date, rec, id);
 
   res.json({ success: true });
+});
+
+// Toggle activity visibility
+app.patch('/api/admin/activities/:id/toggle', (req, res) => {
+  const { id } = req.params;
+  const activity = db.prepare('SELECT visible FROM activities WHERE id = ?').get(id);
+  if (!activity) {
+    return res.status(404).json({ error: 'Activity not found.' });
+  }
+  const newVisible = activity.visible ? 0 : 1;
+  db.prepare('UPDATE activities SET visible = ? WHERE id = ?').run(newVisible, id);
+  res.json({ success: true, visible: newVisible });
 });
 
 // Delete activity

@@ -77,6 +77,7 @@ activityForm.addEventListener('submit', async (e) => {
     name: document.getElementById('actName').value.trim(),
     points: parseInt(document.getElementById('actPoints').value),
     active_date: document.getElementById('actDate').value,
+    recurrence: document.getElementById('actRecurrence').value,
   };
 
   const url = editingId
@@ -116,11 +117,21 @@ async function loadActivities() {
     }
 
     noData.style.display = 'none';
-    tbody.innerHTML = activities.map(a => `
-      <tr>
+    tbody.innerHTML = activities.map(a => {
+      const isHidden = !a.visible;
+      const rowStyle = isHidden ? 'opacity: 0.5;' : '';
+      const typeBadge = a.recurrence === 'weekly'
+        ? '<span style="background:#2563eb;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Weekly</span>'
+        : '<span style="background:#6b7280;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">One-time</span>';
+      const toggleBtn = isHidden
+        ? `<button class="btn btn-success" onclick="toggleVisibility(${a.id})" style="padding:4px 10px;font-size:12px;">Show</button>`
+        : `<button class="btn" onclick="toggleVisibility(${a.id})" style="padding:4px 10px;font-size:12px;background:#f59e0b;color:#fff;">Hide</button>`;
+      return `
+      <tr style="${rowStyle}">
         <td>${escapeHtml(a.name)}</td>
         <td>${a.points}</td>
         <td>${a.active_date}</td>
+        <td>${typeBadge} ${toggleBtn}</td>
         <td>
           <button class="btn btn-view-participants" onclick="toggleActivityParticipants(${a.id}, this)">
             ${a.participant_count} <span class="expand-icon">&#9654;</span>
@@ -128,26 +139,27 @@ async function loadActivities() {
         </td>
         <td class="actions">
           <button class="btn btn-add-participant" onclick="showAddParticipant(${a.id})">Add Person</button>
-          <button class="btn btn-edit" onclick="editActivity(${a.id}, '${escapeHtml(a.name)}', ${a.points}, '${a.active_date}')">Edit</button>
+          <button class="btn btn-edit" onclick="editActivity(${a.id}, '${escapeHtml(a.name)}', ${a.points}, '${a.active_date}', '${a.recurrence}')">Edit</button>
           <button class="btn btn-danger" onclick="deleteActivity(${a.id})">Delete</button>
         </td>
       </tr>
       <tr class="participants-row" id="participants-row-${a.id}" style="display:none;">
-        <td colspan="5" class="participants-cell">
+        <td colspan="6" class="participants-cell">
           <div class="activity-participants" id="activity-participants-${a.id}">Loading...</div>
         </td>
       </tr>
-    `).join('');
+    `}).join('');
   } catch {
     alert('Failed to load activities.');
   }
 }
 
-function editActivity(id, name, points, date) {
+function editActivity(id, name, points, date, recurrence) {
   editingId = id;
   document.getElementById('actName').value = name;
   document.getElementById('actPoints').value = points;
   document.getElementById('actDate').value = date;
+  document.getElementById('actRecurrence').value = recurrence || 'none';
   actSubmitBtn.textContent = 'Update Activity';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -161,6 +173,20 @@ async function deleteActivity(id) {
     loadParticipants();
   } catch {
     alert('Failed to delete activity.');
+  }
+}
+
+// --- Toggle Activity Visibility ---
+async function toggleVisibility(id) {
+  try {
+    const res = await fetch(`/api/admin/activities/${id}/toggle`, { method: 'PATCH' });
+    if (res.ok) {
+      loadActivities();
+    } else {
+      alert('Failed to toggle visibility.');
+    }
+  } catch {
+    alert('Failed to toggle visibility.');
   }
 }
 
