@@ -655,6 +655,13 @@ tbody tr {
   margin: 0 auto 10px;
 }
 
+/* Table wrapper for overflow on mobile */
+.table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius);
+}
+
 /* Responsive */
 @media (max-width: 600px) {
   .form-row {
@@ -667,12 +674,13 @@ tbody tr {
   }
 
   .card {
-    padding: 20px;
+    padding: 16px;
   }
 
   th, td {
     padding: 8px 10px;
     font-size: 13px;
+    white-space: nowrap;
   }
 
   .brand-logo {
@@ -693,5 +701,28 @@ tbody tr {
     flex-direction: column;
     gap: 10px;
     align-items: flex-start;
+  }
+
+  .ranking-card {
+    padding: 16px 12px;
+  }
+
+  .ranking-table th,
+  .ranking-table td {
+    padding: 8px 8px;
+    font-size: 12px;
+  }
+
+  .ranking-table td:nth-child(3) {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .rank-badge {
+    width: 26px;
+    height: 26px;
+    font-size: 11px;
   }
 }

@@ -75,36 +75,38 @@ async function loadRanking() {
     }
 
     container.innerHTML = `
-      <table class="ranking-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>${t('rankName')}</th>
-            <th>${t('rankEmail')}</th>
-            <th>${t('rankPoints')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${participants.map((p, i) => {
-            const rank = i + 1;
-            let badgeClass = '';
-            if (rank === 1) badgeClass = 'gold';
-            else if (rank === 2) badgeClass = 'silver';
-            else if (rank === 3) badgeClass = 'bronze';
+      <div class="table-wrapper">
+        <table class="ranking-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>${t('rankName')}</th>
+              <th>${t('rankEmail')}</th>
+              <th>${t('rankPoints')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${participants.map((p, i) => {
+              const rank = i + 1;
+              let badgeClass = '';
+              if (rank === 1) badgeClass = 'gold';
+              else if (rank === 2) badgeClass = 'silver';
+              else if (rank === 3) badgeClass = 'bronze';
 
-            const fullName = [p.first_name, p.last_name].filter(Boolean).join(' ');
+              const fullName = [p.first_name, p.last_name].filter(Boolean).join(' ');
 
-            return `
-              <tr>
-                <td><span class="rank-badge ${badgeClass}">${rank}</span></td>
-                <td>${escapeHtml(fullName)}</td>
-                <td>${escapeHtml(p.email)}</td>
-                <td class="points-cell">${p.total_points}</td>
-              </tr>
-            `;
-          }).join('')}
-        </tbody>
-      </table>
+              return `
+                <tr>
+                  <td><span class="rank-badge ${badgeClass}">${rank}</span></td>
+                  <td>${escapeHtml(fullName)}</td>
+                  <td>${escapeHtml(p.email)}</td>
+                  <td class="points-cell">${p.total_points}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
     `;
   } catch {
     container.innerHTML = `<p class="no-data">${t('errorLoad')}</p>`;
