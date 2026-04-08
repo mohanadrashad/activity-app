@@ -495,6 +495,23 @@ app.get('/api/admin/participants', requireAdmin, (req, res) => {
   res.json(participants);
 });
 
+// Get all activities for a single participant by email
+app.get('/api/admin/participants/:email/activities', requireAdmin, (req, res) => {
+  const email = decodeURIComponent(req.params.email).toLowerCase().trim();
+  const rows = db.prepare(`
+    SELECT
+      a.name        AS activity_name,
+      a.points,
+      a.active_date,
+      p.submitted_at
+    FROM participants p
+    JOIN activities a ON p.activity_id = a.id
+    WHERE LOWER(p.email) = ?
+    ORDER BY a.active_date DESC, p.submitted_at DESC
+  `).all(email);
+  res.json(rows);
+});
+
 // Update participant (by email)
 app.put('/api/admin/participants/:email', requireAdmin, (req, res) => {
   const { email } = req.params;

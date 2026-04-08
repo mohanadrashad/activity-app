@@ -369,7 +369,7 @@ async function loadParticipants() {
         <tr>
           ${isSuperAdmin ? `<td><input type="checkbox" class="participant-checkbox" value="${escapeHtml(p.email)}" onchange="updateDeleteBtn()"></td>` : '<td></td>'}
           <td><span class="rank-badge ${badgeClass}">${rank}</span></td>
-          <td>${escapeHtml(fullName)}</td>
+          <td><span class="participant-name-link" onclick="showParticipantActivities('${escapeAttr(p.email)}', '${escapeAttr(fullName)}')">${escapeHtml(fullName)}</span></td>
           <td>${escapeHtml(p.email)}</td>
           <td>${p.total_points}</td>
           <td>${escapeHtml(p.activities)}</td>
@@ -441,6 +441,69 @@ function editParticipant(email, firstName, lastName) {
       alert('Failed to update participant.');
     }
   }).catch(() => alert('Failed to update participant.'));
+}
+
+// --- Participant Activity Detail ---
+async function showParticipantActivities(email, fullName) {
+  const modal = document.getElementById('participantActivitiesModal');
+  const content = document.getElementById('participantActivitiesContent');
+  document.getElementById('participantModalName').textContent = fullName;
+  document.getElementById('participantModalEmail').textContent = email;
+  content.innerHTML = 'Loading...';
+  modal.style.display = 'flex';
+
+  try {
+    const res = await fetch(`/api/admin/participants/${encodeURIComponent(email)}/activities`, {
+      headers: adminHeaders(),
+    });
+    if (!res.ok) {
+      content.innerHTML = '<p class="no-data">Failed to load activities.</p>';
+      return;
+    }
+    const activities = await res.json();
+    if (activities.length === 0) {
+      content.innerHTML = '<p class="no-data" style="padding:20px;">No activities recorded.</p>';
+      return;
+    }
+    const totalPoints = activities.reduce((sum, a) => sum + a.points, 0);
+    content.innerHTML = `
+      <table class="sub-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Activity Name</th>
+            <th>Points</th>
+            <th>Date</th>
+            <th>Registered At</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${activities.map((a, i) => `
+            <tr>
+              <td>${i + 1}</td>
+              <td>${escapeHtml(a.activity_name)}</td>
+              <td>${a.points}</td>
+              <td>${a.active_date}</td>
+              <td>${a.submitted_at}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+        <tfoot>
+          <tr style="font-weight:700;border-top:2px solid var(--border);">
+            <td colspan="2" style="text-align:right;padding-right:12px;">Total</td>
+            <td>${totalPoints}</td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
+      </table>
+    `;
+  } catch {
+    content.innerHTML = '<p class="no-data">Server error.</p>';
+  }
+}
+
+function closeParticipantActivitiesModal() {
+  document.getElementById('participantActivitiesModal').style.display = 'none';
 }
 
 // --- Export ---

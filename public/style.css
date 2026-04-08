@@ -530,6 +530,16 @@ tbody tr {
 .rank-badge.silver { background: linear-gradient(135deg, #8A9A9A, #B0BEC5); color: #fff; }
 .rank-badge.bronze { background: linear-gradient(135deg, #B87333, #D4944A); color: #fff; }
 
+/* Clickable participant name link */
+.participant-name-link {
+  cursor: pointer;
+  color: var(--text-primary);
+}
+.participant-name-link:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
 /* View Participants Button */
 .btn-view-participants {
   background: transparent;
